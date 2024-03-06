@@ -53,7 +53,7 @@ jobs:
       - name: Setup Node.JS
         uses: actions/setup-node@v4
         with:
-          node-version: latest
+          node-version: 20
         
       # All static solutions should use package.json and have lint, test, build as commands
       - name: Install
@@ -81,8 +81,10 @@ jobs:
       - name: 🔨 Run build
         env:
           SITE_URL: ${{ inputs.site-url }}
-          REPO_PROD: ${{ inputs.repo-prod }} // used to get DORA metrics in Next.JS
-          BUILD_FF_URL: ${{ inputs.build-ff-url }} // used for feature flags in build phase (i.e. SSG in Next.JS)
+          REPO_PROD: ${{ inputs.repo-prod }} 
+          # used to get DORA metrics in Next.JS
+          BUILD_FF_URL: ${{ inputs.build-ff-url }}
+          # used for feature flags in build phase (i.e. SSG in Next.JS)
         run: npm run build
 
       - name: Upload build artifacts
