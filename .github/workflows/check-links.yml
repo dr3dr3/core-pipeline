@@ -1,0 +1,63 @@
+# NOTE: Must use this in same workflow as artefact upload
+name: CHECK-LINKS
+
+on:
+  workflow_call:
+    inputs:
+      site-url:
+        required: true
+        type: string
+      toggle:
+        required: true
+        type: string
+      repo-gitops:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+
+  check-links:
+    name: Checking Links 🔗
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.repo-gitops }}
+          ref: 'main'
+          token: ${{ secrets.PIPELINE_PAT }}
+
+      - name: Setup Node.JS
+        if: ${{ inputs.toggle == 'true' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # https://github.com/JustinBeckwith/linkinator
+      - name: Install Linkinator
+        if: ${{ inputs.toggle == 'true' }}
+        run: |
+          npm install linkinator
+
+      - name: Check links 
+        id: check-links
+        if: ${{ inputs.toggle == 'true' }}
+        env:
+          SITE_URL: ${{ inputs.site-url }}
+        run: |
+          echo "### ✅ Check: Hyperlinks using Linkinator" >> $GITHUB_STEP_SUMMARY
+          npx linkinator "$SITE_URL" --config "./quality/linkinator.config.json"
+          echo $(npx linkinator "$SITE_URL" --config "./quality/linkinator.config.json") >> $GITHUB_STEP_SUMMARY
+          echo $(npx linkinator "$SITE_URL" --config "./quality/linkinator.config.json") >> links-html.json
+          echo 'RESULT='$(jq '.passed' links-html.json) >> $GITHUB_OUTPUT
+
+      - name: Fail workflow
+        if: ${{ steps.check-links.outputs.RESULT != 'true' && inputs.toggle == 'true' }}
+        run: exit 1

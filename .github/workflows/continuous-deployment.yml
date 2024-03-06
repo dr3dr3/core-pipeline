@@ -1,0 +1,240 @@
+name: CONTINUOUS-DEPLOYMENT
+
+on:
+
+  workflow_call:
+    inputs:
+      target-deploy:
+        required: true
+        type: string
+      soln-group:
+        required: true
+        type: string
+      site-url:
+        required: true
+        type: string
+      blue-green:
+        required: true
+        type: string
+      repo-gitops:
+        required: true
+        type: string
+      check-links:
+        required: true
+        type: string
+      deploy-to:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+
+  get-config:
+    name: Repositories GitOps
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      matrix-solutions: ${{ steps.repos.outputs.SOLUTIONS }}
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.repo-gitops }}
+          ref: 'main'
+          token: ${{ secrets.PIPELINE_PAT }}
+
+      - name: Get Solution Repo's
+        id: repos
+        run: |
+          filter=$(yq '.repositories.solutions | filter(.groups[] == "${{ inputs.soln-group || 'default' }}" )' repo/repositories.yml -o=json | jq -c)
+          repos="{\"include\": $filter }"
+          echo $repos
+          echo "SOLUTIONS=$repos" >> $GITHUB_OUTPUT
+
+  get-build-artifacts:
+    name: Get Build Artifacts
+    needs: [get-config]
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJSON(needs.get-config.outputs.matrix-solutions) }}
+    permissions:
+      contents: none
+    steps:
+
+      - name: Download latest build artifact
+        if: ${{ matrix.status == 'active' }}
+        env:
+          REPO: '${{ github.repository_owner }}/${{ matrix.repo }}'
+        run: |
+          wget $(curl -s "https://api.github.com/repos/$REPO/releases/latest"  |  jq -r '.assets[] | select(.name | contains ("build")) | .browser_download_url')
+          mkdir build
+          tar -xzvf build.tar.gz -C build
+
+      - name: List Files
+        run: ls -R
+
+      - name: Upload build artifacts
+        if: ${{ matrix.status == 'active' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.route }}
+          path: build/_site
+          retention-days: 1
+
+  combine-artifacts:
+    name: Compile build artifacts
+    needs: [get-build-artifacts]
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+    
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: List Files
+        run: echo "$(ls)" >> $GITHUB_STEP_SUMMARY
+
+      - name: Move Root Route
+        run: |
+          mv root/**  ./
+          rmdir root
+
+      - name: List Files
+        run: echo "$(ls -R)" >> $GITHUB_STEP_SUMMARY
+
+      # # Set right SITE URL for the relevant environment
+      # - name: Update aboslute links for relevant environments
+      #   run: grep -rl localhost . | xargs sed -i 's@http://localhost@https://${{ inputs.site-url }}@g'
+
+      # Set right URL for featurevisor feature flags service
+      # - name: Update links to feature flags
+      #   if: ${{ inputs.soln-group != 'feature-flags' }}
+      #   run: grep -rl datafile-tag-all.json . | xargs sed -i 's@datafiles/ci/datafile-tag-all.json@datafiles/${{ inputs.target-deploy }}/datafile-tag-${{ inputs.blue-green }}.json@g'
+
+      # # Set whether deployment is blue/green
+      # - name: Update DEPLOY-BLUE-GREEN
+      #   run: grep -rl DEPLOY-BLUE-GREEN . | xargs sed -i 's@DEPLOY-BLUE-GREEN@${{ inputs.blue-green }}@g'
+
+      # # Set deploy host to help identify blue/green
+      # - name: Update DEPLOY-HOST-PLACEHOLDER
+      #   run: grep -rl DEPLOY-HOST-PLACEHOLDER . | xargs sed -i 's@DEPLOY-HOST-PLACEHOLDER@${{ inputs.deploy-to }}@g'
+
+      # Upload deployable artifact for combined static site
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ format('{0}-{1}', 'RC', github.run_id ) }}
+          path: .
+          retention-days: 1
+  
+  ### Pre-Deployment Tests
+
+
+  
+  # Deploy to Static Site Host
+  deploy-static-site:
+    name: Deploy to 
+    needs: [combine-artifacts]
+    uses: ./.github/workflows/deploy-static-site.yml
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    secrets: inherit
+    with:
+      target-deploy: ${{ inputs.target-deploy }}
+      target-purpose: ${{ inputs.blue-green }}
+      artefact-ref: ${{ format('{0}-{1}', 'RC', github.run_id ) }}
+      deploy-to: ${{ inputs.deploy-to }}
+      site-url: ${{ inputs.site-url }}
+
+  # Dispatch event (cicd-event) to GitOps repo
+  dispatch-cicd-ci:
+    name: 📨 CICD Event - Deploy CI
+    needs: [deploy-static-site]
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    permissions:
+      contents: none
+    steps:
+      - name: Dispatch
+        uses: actions/github-script@v7
+        env:
+          OWNER: ${{ github.repository_owner }}
+          REPO_GITOPS: ${{ inputs.repo-gitops }}
+          PHASE: ${{ inputs.target-deploy }}
+          OUTCOME: ${{ needs.deploy-static-site.result }}
+        with:
+          github-token: ${{ secrets.PIPELINE_PAT }}
+          script: |
+            const { OWNER, REPO_GITOPS, PHASE, OUTCOME } = process.env
+            const repo = /[^/]*$/.exec(`${REPO_GITOPS}`)[0];
+            console.log(repo)
+            github.rest.repos.createDispatchEvent({
+              owner: `${OWNER}`,
+              repo: `${repo}`,
+              event_type: 'cicd-event',
+              client_payload: { "phase": `${PHASE}`, "outcome": `${OUTCOME}` }
+            });
+
+  ### Post-deployment Tests (smoke, PVT, etc)
+  
+  # Check links working in deployed static site
+  check-links:
+    name: Check Links
+    needs: [deploy-static-site]
+    uses: ./.github/workflows/check-links.yml
+    permissions:
+      contents: read
+    secrets: inherit
+    with: 
+      site-url: ${{ inputs.site-url }}
+      toggle: ${{ inputs.check-links }}
+      repo-gitops: ${{ inputs.repo-gitops }}
+
+  post-deploy-test:
+    name: Placeholder for post-deployment tests
+    needs: [deploy-static-site]
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    permissions:
+      contents: none
+    steps:
+      - name: Echo
+        run: echo "Placeholder for post-deploy test"
+
+  # Check all acceptance completed
+  deployment-complete:
+    name: Deployment 👍
+    needs: [get-config, get-build-artifacts, combine-artifacts, deploy-static-site, check-links, post-deploy-test] 
+    if: always() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: none
+    steps:
+
+      - name: Ready message
+        run: echo "### Deployment Completed :thumbsup:" >> $GITHUB_STEP_SUMMARY
+
+  deployment-failed:
+    name: Deployment 👎
+    needs: [get-config, get-build-artifacts, combine-artifacts, deploy-static-site, check-links, post-deploy-test] 
+    if: always() && ( contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') )
+    runs-on: ubuntu-latest
+    permissions:
+      contents: none
+    steps:
+
+      - name: Ready message
+        run: echo "### Deployment Failed :thumbsdown:" >> $GITHUB_STEP_SUMMARY
