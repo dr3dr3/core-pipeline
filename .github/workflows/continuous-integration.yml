@@ -38,6 +38,12 @@ on:
       repo-gitops:
         required: true
         type: string
+      build-ff-url:
+        required: true
+        type: string
+      live-ff-url:
+        required: true
+        type: string
 
 permissions:
   contents: write
