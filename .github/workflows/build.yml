@@ -37,6 +37,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    environment: build
     env:
       OUTPUT_DIR: ${{ inputs.output-dir }}
 
