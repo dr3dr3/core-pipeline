@@ -88,7 +88,7 @@ jobs:
           # used to get DORA metrics in Next.JS
           BUILD_FF_URL: ${{ inputs.build-ff-url }} 
           # used for feature flags in build phase (i.e. SSG in Next.JS)
-          LIVE_FF_URL: ${{ inputs.live-ff-url }} 
+          NEXT_PUBLIC_FF_URL: ${{ inputs.live-ff-url }} 
           # used for feature flags in live site
         run: npm run build
 
