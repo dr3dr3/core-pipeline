@@ -24,12 +24,6 @@ on:
       repo-prod:
         required: true
         type: string
-      build-ff-url:
-        required: true
-        type: string
-      live-ff-url:
-        required: true
-        type: string
     
 permissions:
   contents: read
@@ -84,8 +78,6 @@ jobs:
       - name: 🔨 Run build
         env:
           SITE_URL: ${{ inputs.site-url }}
-          REPO_PROD: ${{ inputs.repo-prod }} 
-          # used to get DORA metrics in Next.JS
         run: npm run build
 
       - name: Upload build artifacts
