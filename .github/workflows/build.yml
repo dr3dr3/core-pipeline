@@ -27,6 +27,9 @@ on:
       build-ff-url:
         required: true
         type: string
+      live-ff-url:
+        required: true
+        type: string
     
 permissions:
   contents: read
@@ -83,8 +86,10 @@ jobs:
           SITE_URL: ${{ inputs.site-url }}
           REPO_PROD: ${{ inputs.repo-prod }} 
           # used to get DORA metrics in Next.JS
-          BUILD_FF_URL: ${{ inputs.build-ff-url }}
+          BUILD_FF_URL: ${{ inputs.build-ff-url }} 
           # used for feature flags in build phase (i.e. SSG in Next.JS)
+          LIVE_FF_URL: ${{ inputs.live-ff-url }} 
+          # used for feature flags in live site
         run: npm run build
 
       - name: Upload build artifacts
