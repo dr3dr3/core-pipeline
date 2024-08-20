@@ -11,9 +11,6 @@ on:
       target-ref:
         required: true
         type: string
-      solution:
-        required: true
-        type: string
       soln-group:
         required: true
         type: string
@@ -104,7 +101,6 @@ jobs:
       artefact-ref: ${{ needs.set-tag.outputs.tag }}
       feature: ${{ inputs.feature }}
       site-url: ${{ inputs.site-url }}
-      solution: ${{ inputs.solution }}
       output-dir: ${{ inputs.output-dir }}
       repo-prod: ${{ inputs.repo-prod }}
 
