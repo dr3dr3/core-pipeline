@@ -15,12 +15,6 @@ on:
       site-url:
         required: true
         type: string
-      output-dir:
-        required: true
-        type: string
-      repo-prod:
-        required: true
-        type: string
     
 permissions:
   contents: read
@@ -35,8 +29,6 @@ jobs:
     permissions:
       contents: read
     environment: build
-    env:
-      OUTPUT_DIR: ${{ inputs.output-dir }}
 
     steps:
 
@@ -74,8 +66,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.artefact-ref }}
-          # Output of build should be in dist folder
-          path: ${{ inputs.output-dir }}
+          path: 'build'
           retention-days: 1
 
       - name: Build completed

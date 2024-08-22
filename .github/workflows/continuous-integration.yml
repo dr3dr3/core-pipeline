@@ -14,9 +14,6 @@ on:
       soln-group:
         required: true
         type: string
-      output-dir:
-        required: true
-        type: string
       site-url:
         required: true
         type: string
@@ -46,6 +43,7 @@ jobs:
   # Dispatch event (ci-on-main) to GitOps repo
   dispatch-cicd-start:
     name: 📨 CICD Event - Start
+    if: ${{ inputs.repo-gitops != 'missing' }}
     timeout-minutes: 5
     runs-on: ubuntu-latest
     permissions:
@@ -92,7 +90,7 @@ jobs:
   build:
     name: 🔨 Build
     needs: [set-tag]
-    uses: ./.github/workflows/build.yml
+    uses: ./.github/workflows/build-nodejs.yml
     permissions:
       contents: read
     secrets: inherit
@@ -101,13 +99,12 @@ jobs:
       artefact-ref: ${{ needs.set-tag.outputs.tag }}
       feature: ${{ inputs.feature }}
       site-url: ${{ inputs.site-url }}
-      output-dir: ${{ inputs.output-dir }}
-      repo-prod: ${{ inputs.repo-prod }}
 
   # Dispatch event (ci-on-main) to GitOps repo
   dispatch-cicd-build:
     name: 📨 CICD Event - Build
     needs: [build]
+    if: ${{ inputs.repo-gitops != 'missing' }}
     timeout-minutes: 5
     runs-on: ubuntu-latest
     permissions:
@@ -171,6 +168,7 @@ jobs:
   dispatch-cicd-ci:
     name: 📨 CICD Event - Deploy CI
     needs: [deploy-ci]
+    if: ${{ inputs.repo-gitops != 'missing' }}
     timeout-minutes: 5
     runs-on: ubuntu-latest
     permissions:
@@ -202,19 +200,19 @@ jobs:
   check-links:
     name: 🔗 Check Links
     needs: [deploy-ci]
+    if: ${{ inputs.check-links == 'true' }}
     uses: ./.github/workflows/check-links.yml
     permissions:
       contents: read
     secrets: inherit
     with: 
       site-url: ${{ inputs.site-url }}
-      toggle: ${{ inputs.check-links }}
-      repo-gitops: ${{ inputs.repo-gitops }}
 
   # Dispatch to trigger deployment to Stage Environment
   dispatch-stg:
     name: Dispatch STG
     needs: [build, check-links]
+    if: ${{ inputs.repo-stage != 'missing' }}
     uses: ./.github/workflows/deployment-dispatch.yml
     permissions:
       contents: write
@@ -223,26 +221,3 @@ jobs:
       blue-green: 'blue'
       target-repo: ${{ inputs.repo-stage }}
     secrets: inherit
-
-  # Confirm CI Completed
-  ci-complete:
-    name: 👍 CI Complete
-    needs: [set-tag, build, deploy-ci, dispatch-stg] 
-    runs-on: ubuntu-latest
-    permissions:
-      contents: none
-    steps:
-      - name: Ready message
-        run: echo "### Continuous Integration Completed :thumbsup:" >> $GITHUB_STEP_SUMMARY
-
-  # Confirm CI Failed
-  ci-failed:
-    name: 👎 CI Failed 
-    needs: [set-tag, build, deploy-ci, dispatch-stg]  
-    if: always() && ( contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') )
-    runs-on: ubuntu-latest 
-    permissions:
-      contents: none
-    steps:
-      - name: Ready message
-        run: echo "### Continuous Integration Failed :thumbsdown:" >> $GITHUB_STEP_SUMMARY

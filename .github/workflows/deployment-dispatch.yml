@@ -38,7 +38,7 @@ jobs:
   #       id: block
   #       with:
   #         owner: 'dr3dr3'
-  #         repo: ${{ format('{0}-{1}', 'devops-demo', inputs.target-deploy) }}
+  #         repo: ${{ format('{0}-{1}', 'xxx', inputs.target-deploy) }}
   #         labels: 'status-deploy-paused'
   #         query: |
   #           query release($owner:String!,$repo:String!,$labels:[String!]) {

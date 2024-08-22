@@ -87,37 +87,39 @@ jobs:
           echo "### Deploy complete! :green_apple:" >> $GITHUB_STEP_SUMMARY
           echo "${{ steps.deployment.outputs.page_url }}" >> $GITHUB_STEP_SUMMARY
 
-  deploy-surge:
-    name: 🚀 Surge.sh
-    if: ${{ inputs.deploy-to == 'SURGE' && inputs.site-url != '' && inputs.target-deploy != 'prd' }}
-    environment: ${{ format( '{0}-{1}', inputs.target-deploy, inputs.target-purpose ) }}
-    timeout-minutes: 10
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
 
-    steps:
+  # BUG: site-url will not be null and will include 'https://'
+  # deploy-surge:
+  #   name: 🚀 Surge.sh
+  #   if: ${{ inputs.deploy-to == 'SURGE' && inputs.site-url != '' && inputs.target-deploy != 'prd' }}
+  #   environment: ${{ format( '{0}-{1}', inputs.target-deploy, inputs.target-purpose ) }}
+  #   timeout-minutes: 10
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     contents: read
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: latest
+  #   steps:
 
-      - name: Install Surge.SH CLI
-        run: npm install surge
+  #     - uses: actions/setup-node@v4
+  #       with:
+  #         node-version: latest
 
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ inputs.artefact-ref }}
-          path: dist
+  #     - name: Install Surge.SH CLI
+  #       run: npm install surge
 
-      - name: Upload to Surge.SH
-        run: npx surge ./dist --domain ${{ inputs.site-url }} --token ${{ secrets.SURGE_TOKEN }}
+  #     - name: Download build artifacts
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: ${{ inputs.artefact-ref }}
+  #         path: dist
 
-      - name: Summary
-        run: |
-          echo "### Deploy complete! :green_apple:" >> $GITHUB_STEP_SUMMARY
-          echo "Deployed to Surge.SH here: https://${{ inputs.site-url }}" >> $GITHUB_STEP_SUMMARY
+  #     - name: Upload to Surge.SH
+  #       run: npx surge ./dist --domain ${{ inputs.site-url }} --token ${{ secrets.SURGE_TOKEN }}
+
+  #     - name: Summary
+  #       run: |
+  #         echo "### Deploy complete! :green_apple:" >> $GITHUB_STEP_SUMMARY
+  #         echo "Deployed to Surge.SH here: https://${{ inputs.site-url }}" >> $GITHUB_STEP_SUMMARY
 
   deploy-vercel:
     name: 🚀 Vercel
