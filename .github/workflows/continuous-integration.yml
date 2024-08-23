@@ -12,26 +12,33 @@ on:
         required: true
         type: string
       soln-group:
-        required: true
+        required: false
         type: string
+        default: 'missing'
       site-url:
-        required: true
+        required: false
         type: string
+        default: ${{ format('https://{0}.github.io/{1}', github.repository_owner, github.event.repository.name) }}
       check-links:
-        required: true
+        required: false
         type: string
+        default: 'false'
       deploy-to:
-        required: true
+        required: false
         type: string
+        default: 'GITHUB-PAGES'
       repo-stage:
-        required: true
+        required: false
         type: string
+        default: 'missing'
       repo-prod:
-        required: true
+        required: false
         type: string
+        default: 'missing'
       repo-gitops:
-        required: true
+        required: false
         type: string
+        default: 'missing'
 
 permissions:
   contents: write
