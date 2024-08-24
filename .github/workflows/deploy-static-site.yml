@@ -44,7 +44,7 @@ jobs:
 
       - name: Echo
         run: |
-          echo "### 🚀 Deploying to ${{ inputs.deploy-to }}" >> $GITHUB_STEP_SUMMARY
+          echo "### Deploying to ${{ inputs.deploy-to }} 🚀" >> $GITHUB_STEP_SUMMARY
           echo "${{ inputs.site-url }}" >> $GITHUB_STEP_SUMMARY
 
   deploy-ghp:

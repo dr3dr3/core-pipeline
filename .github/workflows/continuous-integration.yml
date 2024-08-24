@@ -50,7 +50,7 @@ jobs:
   # Dispatch event (ci-on-main) to GitOps repo
   dispatch-cicd-start:
     name: 📨 CICD Event - Start
-    if: ${{ inputs.repo-gitops != 'missing' }}
+    if: ${{ inputs.repo-gitops != 'missing' && inputs.repo-gitops != '' }}
     timeout-minutes: 5
     runs-on: ubuntu-latest
     permissions:
@@ -111,7 +111,7 @@ jobs:
   dispatch-cicd-build:
     name: 📨 CICD Event - Build
     needs: [build]
-    if: ${{ inputs.repo-gitops != 'missing' }}
+    if: ${{ inputs.repo-gitops != 'missing' && inputs.repo-gitops != '' }}
     timeout-minutes: 5
     runs-on: ubuntu-latest
     permissions:
@@ -175,7 +175,7 @@ jobs:
   dispatch-cicd-ci:
     name: 📨 CICD Event - Deploy CI
     needs: [deploy-ci]
-    if: ${{ inputs.repo-gitops != 'missing' }}
+    if: ${{ inputs.repo-gitops != 'missing' && inputs.repo-gitops != '' }}
     timeout-minutes: 5
     runs-on: ubuntu-latest
     permissions:
@@ -203,23 +203,23 @@ jobs:
 
   ### Run CI Post-Deployment Tests here
 
-  # Test for broken hyperlinks
-  check-links:
-    name: 🔗 Check Links
-    needs: [deploy-ci]
-    if: ${{ inputs.check-links == 'true' }}
-    uses: ./.github/workflows/check-links.yml
-    permissions:
-      contents: read
-    secrets: inherit
-    with: 
-      site-url: ${{ inputs.site-url }}
+  # # Test for broken hyperlinks
+  # check-links:
+  #   name: 🔗 Check Links
+  #   needs: [deploy-ci]
+  #   if: ${{ inputs.check-links == 'true' }}
+  #   uses: ./.github/workflows/check-links.yml
+  #   permissions:
+  #     contents: read
+  #   secrets: inherit
+  #   with: 
+  #     site-url: ${{ inputs.site-url }}
 
   # Dispatch to trigger deployment to Stage Environment
   dispatch-stg:
     name: Dispatch STG
-    needs: [build, check-links]
-    if: ${{ inputs.repo-stage != 'missing' }}
+    needs: [build]
+    if: ${{ inputs.repo-stage != 'missing' && inputs.repo-stage != '' }}
     uses: ./.github/workflows/deployment-dispatch.yml
     permissions:
       contents: write

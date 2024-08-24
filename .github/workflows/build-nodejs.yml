@@ -70,4 +70,4 @@ jobs:
           retention-days: 1
 
       - name: Build completed
-        run: echo "### Builds Completed :thumbsup:" >> $GITHUB_STEP_SUMMARY
+        run: echo "### Build complete :thumbsup:" >> $GITHUB_STEP_SUMMARY
