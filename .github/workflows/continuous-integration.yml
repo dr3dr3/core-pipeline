@@ -202,6 +202,16 @@ jobs:
             });
 
   ### Run CI Post-Deployment Tests here
+  post-deployment-tests-ci:
+    name: PDT for CI
+    needs: [build]
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Echo
+        run: echo 'To be added'
 
   # # Test for broken hyperlinks
   # check-links:
@@ -218,7 +228,7 @@ jobs:
   # Dispatch to trigger deployment to Stage Environment
   dispatch-stg:
     name: Dispatch STG
-    needs: [build]
+    needs: [build, deploy-ci, post-deployment-tests-ci]
     if: ${{ inputs.repo-stage != 'missing' && inputs.repo-stage != '' }}
     uses: ./.github/workflows/deployment-dispatch.yml
     permissions:
