@@ -1,0 +1,44 @@
+name: STATICSITE-GET-BUILD-ARTIFACT
+
+on:
+  workflow_call:
+    inputs:
+      artifact-url:
+        required: true
+        type: string
+      artifact-ref:
+        required: true
+        type: string
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: none
+
+jobs:
+
+  github-repo-release:
+    name: From GitHub Repo Release
+    if: ${{ contains(inputs.artifact-url,'api.github.com/repos/') }}
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    permissions:
+      contents: none
+    steps:
+
+      - name: Download latest build artifact
+        env:
+          URL: ${{ inputs.artifact-url }}
+        run: |
+          wget $(curl -s "$URL"  |  jq -r '.assets[] | select(.name | contains ("build")) | .browser_download_url')
+          mkdir build
+          tar -xzvf build.tar.gz -C build
+
+      - name: List Files
+        run: ls -R
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact-ref }}
+          path: build/_site
+          retention-days: 1
